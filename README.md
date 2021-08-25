@@ -7,5 +7,5 @@
 * 최준민
 * 황보현
 
-## 
-![20210825_192420](https://user-images.githubusercontent.com/87738843/130774249-8dceedbf-545e-44b9-8654-c08bc2cc8ed6.jpg)
+## 결과물
+![20210825_192420](https://user-images.githubusercontent.com/87738843/130774595-bc5b199b-c086-4add-a1ae-9b3c212482c1.jpg)
