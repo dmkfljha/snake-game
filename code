@@ -1,0 +1,149 @@
+# 핵심 코드
+
+import sys
+import utime
+import urandom
+import machine
+import _thread
+from machine import Pin, Signal, ADC, SPI
+import driver_spimax7219
+
+Signal
+
+# VARIABLE DEFINE
+snakeobject={}
+randompoint=[]
+direction=""
+templocation_c=0
+templocation_r=0
+templocation_d=0
+eatcheck=0
+samepointcheck=0
+gameovercheck=0
+
+"""
+print(snakeobject[0]["num"])
+sys.exit()
+"""
+
+# GPIO
+pin_joy_switch=Signal(Pin(27, Pin.IN,Pin.PULL_UP), invert=True)
+pin_joy_x=ADC(Pin(32, Pin.IN))
+pin_joy_y=ADC(Pin(33, Pin.IN))
+
+# INIT
+pin_joy_x.atten(ADC.ATTN_11DB)
+pin_joy_x.width(ADC.WIDTH_12BIT)
+pin_joy_y.atten(ADC.ATTN_11DB)
+pin_joy_y.width(ADC.WIDTH_12BIT)
+
+display = driver_spimax7219.SPIMATRIX8X8(SPI(1), Pin(15), 1)
+
+# START
+def thread_joyinput():
+  global direction
+  global snakeobject
+  while True:
+    readvalue_y=pin_joy_y.read() # X
+    readvalue_x=pin_joy_x.read() # Y
+    if snakeobject[1][2] == "up" or snakeobject[1][2] == "down" :
+        if readvalue_y > 3000 : # LEFT
+            direction="left"
+        elif readvalue_y < 1000 : # RIGHT
+            direction="right"
+    elif snakeobject[1][2] == "left" or snakeobject[1][2] == "right" :
+        if readvalue_x > 3000 : # RIGHT
+            direction="up"
+        elif readvalue_x < 1000 : # RIGHT
+            direction="down"
+    snakeobject[1][2]=direction
+    utime.sleep(0.05)
+   
+
+while True :
+    # GAME READY
+    _thread.start_new_thread(thread_joyinput, ())
+    snakeobject={1:[6,4,"left"]}
+    direction="left"
+    gameovercheck=0
+    display.clear()
+    display.char_s()
+    
+    while True :
+        if pin_joy_switch.value() == 1 :
+            break
+        utime.sleep(0.1)
+    
+    # GAME START
+    randompoint=[urandom.randrange(0,7),urandom.randrange(0,7)]
+    
+
+    # GAME PLAY
+    while True :
+        templen=int(len(snakeobject))
+
+        # DISPLAY
+        display.clear()
+        temp = 1
+        for i in range(1, templen+1) :
+            display.pixel(snakeobject[i][0],snakeobject[i][1],1)
+
+        display.pixel(randompoint[0],randompoint[1],1)
+        display.show()
+        
+        temp = templen
+        while temp >= 2 :
+            snakeobject[temp][0]=snakeobject[temp-1][0]
+            snakeobject[temp][1]=snakeobject[temp-1][1]
+            snakeobject[temp][2]=snakeobject[temp-1][2]
+            temp-=1
+            
+        # HEAD MOVE
+        if snakeobject[1][2] == "left" :
+            snakeobject[1][0]-=1
+        elif snakeobject[1][2] == "right" :
+            snakeobject[1][0]+=1
+        elif snakeobject[1][2] == "up" :
+            snakeobject[1][1]+=1
+        elif snakeobject[1][2] == "down" :
+            snakeobject[1][1]-=1
+
+        
+        # EAT CHECK
+        if randompoint[0] == snakeobject[1][0] and randompoint[1] == snakeobject[1][1] :
+            snakeobject[templen+1]=[snakeobject[templen][0],snakeobject[templen][1],snakeobject[templen][2]]
+            while True :
+                samepointcheck=0
+                randompoint=[urandom.randrange(0,7),urandom.randrange(0,7)]
+                for var in range(1, templen+1) :
+                    if randompoint[0] == snakeobject[var][0] and randompoint[1] == snakeobject[var][1] :
+                        samepointcheck=1
+                if samepointcheck == 1 :
+                    continue
+                else :
+                    break
+        
+        # GAMEOVER CHECK
+        if templen > 4 :
+            for i in range(2, templen+1) :
+                if snakeobject[1][0] == snakeobject[i][0] and snakeobject[1][1] == snakeobject[i][1] :
+                    gameovercheck=1
+        if snakeobject[1][0] < 0 or snakeobject[1][0] > 7 or snakeobject[1][1] < 0 or snakeobject[1][1] > 7 :
+            gameovercheck=1
+            
+        if gameovercheck == 1 :
+            display.clear()
+            display.char_f()
+            utime.sleep(0.5)
+            display.clear()
+            utime.sleep(0.5)
+            display.char_f()
+            utime.sleep(0.5)
+            display.clear()
+            utime.sleep(0.5)
+            display.char_f()
+            utime.sleep(3)
+            break
+            
+        utime.sleep(0.2)
+
